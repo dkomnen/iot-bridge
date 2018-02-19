@@ -44,17 +44,13 @@ func (m *mqttBroker) Publish(topic string, msg []byte, opts ...broker.PublishOpt
 	}
 
 	var qos byte
-	if v := options.Custom.Value("qos"); v != nil {
-		if _, ok := v.(byte); ok {
-			qos = byte(qos)
-		}
+	if v, ok := options.Custom.Value(publishQoS).(byte); ok {
+		qos = v
 	}
 
 	var retained bool
-	if v := options.Custom.Value("retained"); v != nil {
-		if _, ok := v.(bool); ok {
-			retained = bool(retained)
-		}
+	if v, ok := options.Custom.Value(publishRetained).(bool); ok {
+		retained = v
 	}
 
 	if t := m.client.Publish(topic, qos, retained, msg); t.Wait() && t.Error() != nil {
@@ -74,10 +70,8 @@ func (m *mqttBroker) Subscribe(topic string, handler broker.Handler, opts ...bro
 	}
 
 	var qos byte
-	if v := options.Custom.Value("qos"); v != nil {
-		if _, ok := v.(byte); ok {
-			qos = byte(qos)
-		}
+	if v, ok := options.Custom.Value(subscribeQoS).(byte); ok {
+		qos = v
 	}
 
 	callback := func(c mqtt.Client, msg mqtt.Message) {
@@ -101,14 +95,18 @@ func (m *mqttBroker) Options() broker.Options {
 func getMQTTOpts(opts broker.Options) *mqtt.ClientOptions {
 	mqttClientOpts := mqtt.NewClientOptions()
 	mqttClientOpts.AddBroker(opts.Address)
-	mqttClientOpts.SetTLSConfig(opts.TLSConfig)
+	if opts.TLSConfig != nil {
+		mqttClientOpts.SetTLSConfig(opts.TLSConfig)
+	}
+
+	setAllCustomClientOptions(mqttClientOpts, opts.Custom)
 
 	return mqttClientOpts
 }
 
 func New(options ...broker.Option) broker.Broker {
 	defaultOpts := broker.Options{
-		Address:   "localhost:1883",
+		Address:   "tcp://localhost:1883",
 		TLSConfig: nil,
 		Custom:    context.Background(),
 	}
