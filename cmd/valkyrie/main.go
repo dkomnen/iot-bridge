@@ -10,9 +10,9 @@ import (
 
 func main() {
 	app := cli.NewApp()
-	app.Name = "Valkyra"
-	app.HelpName = "valkyra"
-	app.Description = "Valkyra simulates various types of IOT devices support"
+	app.Name = "Valkyrie"
+	app.HelpName = "valkyrie"
+	app.Description = "Valkyrie simulates various types of IOT devices support"
 	app.Usage = "mock an IOT device for testing Bifrost"
 	app.Version = "0.0.0"
 	app.Author = "David Komljenovic"
