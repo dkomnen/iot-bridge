@@ -38,11 +38,6 @@ func main() {
 					Usage: "specify the `interval` in milliseconds in which the messages will be sent",
 					Value: time.Millisecond * 2500,
 				},
-				cli.StringFlag{
-					Name:  "serial-number, s",
-					Usage: "provide a `serial` number for a device",
-					Value: "",
-				},
 				cli.Float64Flag{
 					Name:  "lower-limit, l",
 					Usage: "lower limit for `temperature` data that is sent",
@@ -52,6 +47,11 @@ func main() {
 					Name:  "upper-limit, u",
 					Usage: "upper limit for `temperature` data that is sent",
 					Value: 100.0,
+				},
+				cli.UintFlag{
+					Name:  "number-of-instances, n",
+					Usage: "`number` of thermometer devices that run concurrently",
+					Value: 1,
 				},
 			},
 			Action: func(ctx *cli.Context) error {
