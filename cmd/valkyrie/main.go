@@ -53,6 +53,10 @@ func main() {
 					Usage: "`number` of thermometer devices that run concurrently",
 					Value: 1,
 				},
+				cli.BoolFlag{
+					Name:  "fahrenheit, f",
+					Usage: "if set, the unit of measurement will be fahrenheit",
+				},
 			},
 			Action: func(ctx *cli.Context) error {
 				// TODO: run the temp device type
