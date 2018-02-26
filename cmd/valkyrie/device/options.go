@@ -2,6 +2,7 @@ package device
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"github.com/dkomnen/iot-bridge/broker"
@@ -33,4 +34,10 @@ func Interval(d time.Duration) Option {
 	return func(opts *Options) {
 		opts.Interval = d
 	}
+}
+
+func GenerateSerialNumber(prefix string, id int) [32]byte {
+	var serial [32]byte
+	copy(serial[:], fmt.Sprintf("%s%d", prefix, id))
+	return serial
 }
