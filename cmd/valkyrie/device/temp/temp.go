@@ -57,13 +57,14 @@ func (t *Temp) generateMessage() []byte {
 		high = v
 	}
 
-	fmt.Fprintf(&buff, "%s:%f", unit, randomFloat64InRange(low, high))
+	fmt.Fprintf(&buff, "%v:%s:%f", t.opts.SerialNumber, unit, randomFloat64InRange(low, high))
 
 	return buff.Bytes()
 }
 
 func (t *Temp) Stop() error {
 	t.stop <- struct{}{}
+	close(t.stop)
 	return nil
 }
 
