@@ -2,7 +2,7 @@ package device
 
 import (
 	"context"
-	"fmt"
+	"crypto/sha512"
 	"time"
 
 	"github.com/dkomnen/iot-bridge/broker"
@@ -36,8 +36,6 @@ func Interval(d time.Duration) Option {
 	}
 }
 
-func GenerateSerialNumber(prefix string, id int) [32]byte {
-	var serial [32]byte
-	copy(serial[:], fmt.Sprintf("%s%d", prefix, id))
-	return serial
+func GenerateSerialNumber(base string) [32]byte {
+	return sha512.Sum512_256([]byte(base))
 }
