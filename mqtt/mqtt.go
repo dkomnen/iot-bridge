@@ -2,6 +2,7 @@ package mqtt
 
 import (
 	"context"
+	"log"
 	"sync"
 
 	"github.com/dkomnen/iot-bridge/broker"
@@ -75,7 +76,9 @@ func (m *mqttBroker) Subscribe(topic string, handler broker.Handler, opts ...bro
 	}
 
 	callback := func(c mqtt.Client, msg mqtt.Message) {
-		handler(msg.Payload())
+		if err := handler(msg.Payload()); err != nil {
+			log.Println(err)
+		}
 	}
 
 	if t := m.client.Subscribe(topic, qos, callback); t.Wait() && t.Error() != nil {
