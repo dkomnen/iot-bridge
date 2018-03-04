@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"log"
 	"time"
 
 	"github.com/dkomnen/iot-bridge/cmd/valkyrie/device"
@@ -13,11 +14,13 @@ import (
 const BrokerTopic = "TEMP"
 
 type Temp struct {
-	opts device.Options
-	stop chan struct{}
+	opts      device.Options
+	isRunning bool
+	stop      chan struct{}
 }
 
 func (t *Temp) Setup() error {
+	log.Printf("Trying to connect with address: %s\n", t.opts.Broker.Options().Address)
 	if err := t.opts.Broker.Connect(); err != nil {
 		return err
 	}
@@ -25,13 +28,18 @@ func (t *Temp) Setup() error {
 }
 
 func (t *Temp) Run() error {
+	t.isRunning = true
+	defer func() { t.isRunning = false }()
+
 	tick := time.NewTicker(t.opts.Interval)
 	for {
 		select {
 		case <-tick.C:
+			msg := t.generateMessage()
+			log.Printf("published new message...")
 			if err := t.opts.Broker.Publish(
 				BrokerTopic,
-				t.generateMessage(),
+				msg,
 			); err != nil {
 				return err
 			}
@@ -44,9 +52,9 @@ func (t *Temp) Run() error {
 
 func (t *Temp) generateMessage() []byte {
 	var buff bytes.Buffer
-	unit := "celsius"
+	unit := "c"
 	if v, ok := t.opts.Custom.Value(fahrenheit).(bool); ok && v {
-		unit = "fahrenheit"
+		unit = "f"
 	}
 
 	var low, high float64
@@ -57,13 +65,15 @@ func (t *Temp) generateMessage() []byte {
 		high = v
 	}
 
-	fmt.Fprintf(&buff, "%v:%s:%f", t.opts.SerialNumber, unit, randomFloat64InRange(low, high))
+	fmt.Fprintf(&buff, "%s%s%5.3f", t.opts.SerialNumber, unit, randomFloat64InRange(low, high))
 
 	return buff.Bytes()
 }
 
 func (t *Temp) Stop() error {
-	t.stop <- struct{}{}
+	if t.isRunning {
+		t.stop <- struct{}{}
+	}
 	close(t.stop)
 	return nil
 }
