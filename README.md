@@ -6,7 +6,7 @@
 
 From project root:
 
-`go run cmd/bifrost/main.go --connnect-address="http://CONNECT_HOST:PORT"
+`go run cmd/bifrost/main.go --connect-address="http://CONNECT_HOST:PORT"
 
 ## Running Valkyrie
 
