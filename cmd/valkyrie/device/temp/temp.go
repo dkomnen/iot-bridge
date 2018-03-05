@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"log"
 	"time"
 
 	"github.com/dkomnen/iot-bridge/cmd/valkyrie/device"
@@ -20,7 +19,6 @@ type Temp struct {
 }
 
 func (t *Temp) Setup() error {
-	log.Printf("Trying to connect with address: %s\n", t.opts.Broker.Options().Address)
 	if err := t.opts.Broker.Connect(); err != nil {
 		return err
 	}
@@ -35,11 +33,9 @@ func (t *Temp) Run() error {
 	for {
 		select {
 		case <-tick.C:
-			msg := t.generateMessage()
-			log.Printf("published new message...")
 			if err := t.opts.Broker.Publish(
 				BrokerTopic,
-				msg,
+				t.generateMessage(),
 			); err != nil {
 				return err
 			}
