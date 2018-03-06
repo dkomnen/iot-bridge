@@ -13,7 +13,7 @@ import (
 	"syscall"
 
 	"github.com/dkomnen/iot-bridge/broker"
-	"github.com/dkomnen/iot-bridge/mqtt"
+	"github.com/dkomnen/iot-bridge/broker/mqtt"
 	"github.com/urfave/cli"
 )
 
@@ -61,7 +61,7 @@ func main() {
 		signal.Notify(shutdown, syscall.SIGINT, syscall.SIGTERM)
 
 		b.Subscribe(
-			"TEMP",
+			"THERMOMETER",
 			func(msg []byte) error {
 				if t, err := parseTempMsg(msg); err != nil {
 					return err

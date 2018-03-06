@@ -2,9 +2,9 @@ package main
 
 import (
 	"github.com/dkomnen/iot-bridge/broker"
+	"github.com/dkomnen/iot-bridge/broker/mqtt"
 	"github.com/dkomnen/iot-bridge/cmd/valkyrie/device"
 	"github.com/dkomnen/iot-bridge/cmd/valkyrie/device/thermometer"
-	"github.com/dkomnen/iot-bridge/mqtt"
 	"github.com/urfave/cli"
 )
 

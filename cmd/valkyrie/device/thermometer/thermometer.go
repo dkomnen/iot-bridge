@@ -6,8 +6,8 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/dkomnen/iot-bridge/broker/mqtt"
 	"github.com/dkomnen/iot-bridge/cmd/valkyrie/device"
-	"github.com/dkomnen/iot-bridge/mqtt"
 )
 
 const BrokerTopic = "THERMOMETER"
