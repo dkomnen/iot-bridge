@@ -1,10 +1,14 @@
 package thermometer
 
-import "math/rand"
+import (
+	"math/rand"
+	"time"
+)
+
+func init() {
+	rand.Seed(time.Now().Unix())
+}
 
 func randomFloat64InRange(low, high float64) float64 {
-	if high <= low {
-		return 0
-	}
-	return (rand.Float64() * low) + (high - low)
+	return low + rand.Float64()*(high-low)
 }
