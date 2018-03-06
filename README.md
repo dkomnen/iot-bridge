@@ -14,7 +14,7 @@ After everything is up and running:
 
 From project root:
 
-`go run cmd/valkyrie/main.go temp --tick INTERVAL -l LOWER_TEMP_LIMIT -u UPPER_TEMP_LIMIT`
+`go run cmd/valkyrie/main.go temp --interval INTERVAL --lower-limit LOWER_TEMP_LIMIT --upper-limit UPPER_TEMP_LIMIT`
 
 
 
