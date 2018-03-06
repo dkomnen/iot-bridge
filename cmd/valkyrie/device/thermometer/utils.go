@@ -1,4 +1,4 @@
-package temp
+package thermometer
 
 import "math/rand"
 

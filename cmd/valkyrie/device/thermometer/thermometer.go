@@ -1,4 +1,4 @@
-package temp
+package thermometer
 
 import (
 	"bytes"
@@ -10,22 +10,22 @@ import (
 	"github.com/dkomnen/iot-bridge/mqtt"
 )
 
-const BrokerTopic = "TEMP"
+const BrokerTopic = "THERMOMETER"
 
-type Temp struct {
+type Thermometer struct {
 	opts      device.Options
 	isRunning bool
 	stop      chan struct{}
 }
 
-func (t *Temp) Setup() error {
+func (t *Thermometer) Setup() error {
 	if err := t.opts.Broker.Connect(); err != nil {
 		return err
 	}
 	return nil
 }
 
-func (t *Temp) Run() error {
+func (t *Thermometer) Run() error {
 	t.isRunning = true
 	defer func() { t.isRunning = false }()
 
@@ -46,7 +46,7 @@ func (t *Temp) Run() error {
 	return nil
 }
 
-func (t *Temp) generateMessage() []byte {
+func (t *Thermometer) generateMessage() []byte {
 	var buff bytes.Buffer
 	unit := "c"
 	if v, ok := t.opts.Custom.Value(fahrenheit).(bool); ok && v {
@@ -66,7 +66,7 @@ func (t *Temp) generateMessage() []byte {
 	return buff.Bytes()
 }
 
-func (t *Temp) Stop() error {
+func (t *Thermometer) Stop() error {
 	if t.isRunning {
 		t.stop <- struct{}{}
 	}
@@ -74,7 +74,7 @@ func (t *Temp) Stop() error {
 	return nil
 }
 
-func (t *Temp) Options() device.Options {
+func (t *Thermometer) Options() device.Options {
 	return t.opts
 }
 
@@ -90,7 +90,7 @@ func New(opts ...device.Option) device.Device {
 		o(&defaults)
 	}
 
-	return &Temp{
+	return &Thermometer{
 		opts: defaults,
 		stop: make(chan struct{}),
 	}
