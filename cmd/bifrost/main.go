@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"encoding/binary"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -9,7 +10,6 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
-	"strconv"
 	"syscall"
 
 	"github.com/dkomnen/iot-bridge/broker"
@@ -23,6 +23,7 @@ type temp struct {
 	SerialNumber string  `json:"serial_number"`
 	Temperature  float64 `json:"temperature"`
 	Unit         string  `json:"unit"`
+	Timestamp    int64   `json:"timestamp"`
 }
 
 func main() {
@@ -93,25 +94,36 @@ func main() {
 }
 
 func parseTempMsg(msg []byte) (temp, error) {
-	var t temp
-	t.SerialNumber = fmt.Sprintf("%x", msg[:32])
-	if msg[32:33][0] == 'c' {
-		t.Unit = "celsius"
-	} else if msg[32:33][0] == 'f' {
-		t.Unit = "fahrenheit"
-	} else {
-		return temp{}, fmt.Errorf(
-			"malformed message: expected unit character to be 'c' or 'f', got %c",
-			msg[32:33][0],
-		)
-	}
-	if parsed, err := strconv.ParseFloat(string(msg[33:]), 64); err != nil {
-		return temp{}, fmt.Errorf("malformed message: %v", err)
-	} else {
-		t.Temperature = parsed
+	var serialNumber [32]byte
+	var unit byte
+	var temperature float64
+	var timestamp int64
+
+	if err := decode(
+		bytes.NewReader(msg),
+		&serialNumber,
+		&unit,
+		&temperature,
+		&timestamp,
+	); err != nil {
+		return temp{}, fmt.Errorf("could not parse message: %v", err)
 	}
 
-	return t, nil
+	return temp{
+		SerialNumber: fmt.Sprintf("%x", serialNumber),
+		Unit:         fmt.Sprintf("%c", unit),
+		Temperature:  temperature,
+		Timestamp:    timestamp,
+	}, nil
+}
+
+func decode(r io.Reader, data ...interface{}) error {
+	for _, v := range data {
+		if err := binary.Read(r, binary.BigEndian, v); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func sendToConnectAPI(address string, msg io.Reader) error {

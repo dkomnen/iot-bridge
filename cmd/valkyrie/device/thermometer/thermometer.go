@@ -3,7 +3,7 @@ package thermometer
 import (
 	"bytes"
 	"context"
-	"fmt"
+	"encoding/binary"
 	"time"
 
 	"github.com/dkomnen/iot-bridge/broker/mqtt"
@@ -47,10 +47,12 @@ func (t *Thermometer) Run() error {
 }
 
 func (t *Thermometer) generateMessage() []byte {
-	var buff bytes.Buffer
-	unit := "c"
+	// if we did unit := 'c', the type of `unit` would default to rune, which is
+	// 4 bytes long, and we don't want that, especially because the decoder will
+	// expect 1 byte here.
+	var unit byte = 'c'
 	if v, ok := t.opts.Custom.Value(fahrenheit).(bool); ok && v {
-		unit = "f"
+		unit = 'f'
 	}
 
 	var low, high float64
@@ -61,9 +63,22 @@ func (t *Thermometer) generateMessage() []byte {
 		high = v
 	}
 
-	fmt.Fprintf(&buff, "%s%s%5.3f", t.opts.SerialNumber, unit, randomFloat64InRange(low, high))
+	return encode(
+		t.opts.SerialNumber,
+		unit,
+		randomFloat64InRange(low, high),
+		time.Now().Unix(),
+	)
+}
 
-	return buff.Bytes()
+func encode(data ...interface{}) []byte {
+	var encoded bytes.Buffer
+
+	for _, v := range data {
+		binary.Write(&encoded, binary.BigEndian, v)
+	}
+
+	return encoded.Bytes()
 }
 
 func (t *Thermometer) Stop() error {
