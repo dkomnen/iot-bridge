@@ -18,8 +18,20 @@ var brokerAddressFlag = cli.StringFlag{
 	Value: "tcp://localhost:1883",
 }
 
+var brokerUsernameFlag = cli.StringFlag{
+	Name:  "broker-username",
+	Usage: "set the username for the broker",
+	Value: "",
+}
+
+var brokerPasswordFlag = cli.StringFlag{
+	Name:  "broker-password",
+	Usage: "set the password for the broker",
+	Value: "",
+}
+
 var serialNumberFlag = cli.StringFlag{
 	Name:  "serial-number",
 	Usage: "string which will be hashed and used as serial number of the device",
-	Value: "thermometer",
+	Value: "",
 }

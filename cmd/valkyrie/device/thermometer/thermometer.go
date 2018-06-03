@@ -5,12 +5,14 @@ import (
 	"context"
 	"encoding/binary"
 	"time"
+	"fmt"
 
 	"github.com/dkomnen/iot-bridge/broker/mqtt"
 	"github.com/dkomnen/iot-bridge/cmd/valkyrie/device"
+	"github.com/dkomnen/iot-bridge/proto"
+	"github.com/dkomnen/iot-bridge/utils/constants"
+	"github.com/golang/protobuf/proto"
 )
-
-const BrokerTopic = "THERMOMETER"
 
 type Thermometer struct {
 	opts      device.Options
@@ -22,6 +24,14 @@ func (t *Thermometer) Setup() error {
 	if err := t.opts.Broker.Connect(); err != nil {
 		return err
 	}
+	t.opts.Broker.Subscribe(
+		"online",
+		func(msg []byte) error {
+			fmt.Println(string(msg))
+			return nil
+		},
+	)
+	t.sendOnlineMessage()
 	return nil
 }
 
@@ -33,12 +43,7 @@ func (t *Thermometer) Run() error {
 	for {
 		select {
 		case <-tick.C:
-			if err := t.opts.Broker.Publish(
-				BrokerTopic,
-				t.generateMessage(),
-			); err != nil {
-				return err
-			}
+			t.generateMessage()
 		case <-t.stop:
 			return nil
 		}
@@ -46,29 +51,36 @@ func (t *Thermometer) Run() error {
 	return nil
 }
 
-func (t *Thermometer) generateMessage() []byte {
-	// if we did unit := 'c', the type of `unit` would default to rune, which is
-	// 4 bytes long, and we don't want that, especially because the decoder will
-	// expect 1 byte here.
-	var unit byte = 'c'
-	if v, ok := t.opts.Custom.Value(fahrenheit).(bool); ok && v {
-		unit = 'f'
+func (t *Thermometer) generateMessage() error {
+	deviceReading := &message.DeviceReading{
+		SensorType:    "temperature",
+		Timestamp:     time.Now().Unix(),
+		SerialNumber:  "1111",
+		SensorReading: randomFloat32InRange(18, 22),
+		Unit:          "c",
+	}
+	data, err := proto.Marshal(deviceReading)
+	if err != nil {
+		return err
 	}
 
-	var low, high float64
-	if v, ok := t.opts.Custom.Value(lowerBound).(float64); ok {
-		low = v
-	}
-	if v, ok := t.opts.Custom.Value(higherBound).(float64); ok {
-		high = v
-	}
+	t.opts.Broker.Publish(constants.ThermometerReading, data)
 
-	return encode(
-		t.opts.SerialNumber,
-		unit,
-		randomFloat64InRange(low, high),
-		time.Now().Unix(),
-	)
+	return nil
+}
+
+func (t *Thermometer) sendOnlineMessage() error {
+	deviceStatus := &message.DeviceStatus{
+		DeviceStatus: true,
+		SerialNumber: t.opts.SerialNumber,
+	}
+	data, err := proto.Marshal(deviceStatus)
+	if err != nil {
+		return err
+	}
+	t.opts.Broker.Publish(constants.DeviceStatus, data)
+
+	return nil
 }
 
 func encode(data ...interface{}) []byte {
@@ -95,7 +107,7 @@ func (t *Thermometer) Options() device.Options {
 
 func New(opts ...device.Option) device.Device {
 	defaults := device.Options{
-		SerialNumber: [32]byte{0},
+		SerialNumber: "",
 		Broker:       mqtt.New(),
 		Interval:     time.Second,
 		Custom:       context.Background(),

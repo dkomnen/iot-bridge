@@ -9,6 +9,6 @@ func init() {
 	rand.Seed(time.Now().Unix())
 }
 
-func randomFloat64InRange(low, high float64) float64 {
-	return low + rand.Float64()*(high-low)
+func randomFloat32InRange(low, high float32) float32 {
+	return low + rand.Float32()*(high-low)
 }

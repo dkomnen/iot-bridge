@@ -3,7 +3,6 @@ package main
 import (
 	"bytes"
 	"encoding/binary"
-	"encoding/json"
 	"fmt"
 	"io"
 	"log"
@@ -14,19 +13,33 @@ import (
 
 	"github.com/dkomnen/iot-bridge/broker"
 	"github.com/dkomnen/iot-bridge/broker/mqtt"
+	"github.com/dkomnen/iot-bridge/utils/constants"
+	"github.com/dkomnen/iot-bridge/proto"
 	"github.com/urfave/cli"
+
+	"github.com/globalsign/mgo"
+	"github.com/golang/protobuf/proto"
+	"github.com/globalsign/mgo/bson"
 )
 
 var connAddr string
 
 type temp struct {
-	SerialNumber string  `json:"serial_number"`
-	Temperature  float64 `json:"temperature"`
-	Unit         string  `json:"unit"`
-	Timestamp    int64   `json:"timestamp"`
+	SerialNumber string  `bson:"serial_number"`
+	Temperature  float64 `bson:"temperature"`
+	Unit         string  `bson:"unit"`
+	Timestamp    int64   `bson:"timestamp"`
 }
 
 func main() {
+	mongoSession, err := mgo.Dial("localhost")
+	if err != nil {
+		panic(err)
+	}
+	defer mongoSession.Close()
+
+	mongoSession.SetMode(mgo.Monotonic, true)
+
 	app := cli.NewApp()
 	app.Name = "Bifrost"
 	app.HelpName = "bifrost"
@@ -62,24 +75,34 @@ func main() {
 		signal.Notify(shutdown, syscall.SIGINT, syscall.SIGTERM)
 
 		b.Subscribe(
-			"THERMOMETER",
+			constants.ThermometerReading,
 			func(msg []byte) error {
-				if t, err := parseTempMsg(msg); err != nil {
+				deviceReading := &message.DeviceReading{}
+				err := proto.Unmarshal(msg, deviceReading)
+				log.Printf("Device reading: %v\n", deviceReading)
+				//saveReadingToMongo(mongoSession, deviceReading)
+				if err != nil {
 					return err
-				} else {
-					var buff bytes.Buffer
-					if err := json.NewEncoder(&buff).Encode(&t); err != nil {
-						return err
-					}
-
-					if err := sendToConnectAPI(connAddr, &buff); err != nil {
-						return err
-					}
 				}
 
 				return nil
 			},
 		)
+		b.Subscribe(
+			constants.DeviceStatus,
+			func(msg []byte) error {
+				deviceStatus := &message.DeviceStatus{}
+				err := proto.Unmarshal(msg, deviceStatus)
+				log.Printf("Device status: %v\n", deviceStatus)
+				UpdateDeviceStatus(mongoSession, deviceStatus.SerialNumber, deviceStatus.DeviceStatus)
+				if err != nil {
+					return err
+				}
+
+				return nil
+			},
+		)
+
 		log.Println("Bifrost listening...")
 
 		<-shutdown
@@ -148,4 +171,38 @@ func sendToConnectAPI(address string, msg io.Reader) error {
 	}
 
 	return nil
+}
+
+func saveReadingToMongo(mongoSession *mgo.Session, data *message.DeviceReading) {
+	c := mongoSession.DB("heimdall").C("test")
+
+	index := mgo.Index{
+		Key:        []string{"sensor_type", "timestamp", "sensor_reading", "unit", "serial_number"},
+		Unique:     true,
+		DropDups:   true,
+		Background: true,
+		Sparse:     true,
+	}
+
+	err := c.EnsureIndex(index)
+	if err != nil {
+		panic(err)
+	}
+	c.Insert(bson.M{"serial_number": data.SerialNumber,
+		"sensor_type": data.SensorType,
+		"sensor_reading": data.SensorReading,
+		"unit": data.Unit,
+		"timestamp": data.Timestamp})
+}
+
+func UpdateDeviceStatus(mongoSession *mgo.Session, serialNumber string, status bool) {
+	c := mongoSession.DB("heimdall").C("device_status")
+
+	update := bson.M{"$set": bson.M{"serial_number": serialNumber, "status": status}}
+	selector := bson.M{"serial_number": serialNumber}
+
+	_, err := c.Upsert(selector, update)
+	if err != nil {
+		panic(err)
+	}
 }
