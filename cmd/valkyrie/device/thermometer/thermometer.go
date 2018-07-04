@@ -1,9 +1,7 @@
 package thermometer
 
 import (
-	"bytes"
 	"context"
-	"encoding/binary"
 	"time"
 	"fmt"
 
@@ -12,22 +10,38 @@ import (
 	"github.com/dkomnen/iot-bridge/proto"
 	"github.com/dkomnen/iot-bridge/utils/constants"
 	"github.com/golang/protobuf/proto"
+	"os"
 )
 
 type Thermometer struct {
 	opts      device.Options
 	isRunning bool
 	stop      chan struct{}
+	run       chan struct{}
 }
 
 func (t *Thermometer) Setup() error {
 	if err := t.opts.Broker.Connect(); err != nil {
 		return err
 	}
+	fmt.Println("Subscribed to " + t.opts.SerialNumber + constants.RemoteShutdown)
 	t.opts.Broker.Subscribe(
-		"online",
+		t.opts.SerialNumber+constants.RemoteShutdown,
 		func(msg []byte) error {
-			fmt.Println(string(msg))
+			fmt.Println("Device received remote shutdown command from server")
+			fmt.Println("Shutting down...")
+			t.sendOfflineMessage()
+			t.isRunning = false
+			return nil
+		},
+	)
+	t.opts.Broker.Subscribe(
+		t.opts.SerialNumber+constants.RemotePowerOn,
+		func(msg []byte) error {
+			fmt.Println("Device received remote power on command from server")
+			fmt.Println("Starting device...")
+			t.sendOnlineMessage()
+			t.isRunning = true
 			return nil
 		},
 	)
@@ -41,17 +55,22 @@ func (t *Thermometer) Run() error {
 
 	tick := time.NewTicker(t.opts.Interval)
 	for {
-		select {
-		case <-tick.C:
-			t.generateMessage()
-		case <-t.stop:
-			return nil
+		if t.isRunning == true {
+			select {
+			case <-tick.C:
+				t.generateMessage()
+			case <-t.stop:
+				fmt.Println("Device stopped...")
+				t.isRunning = false
+			}
 		}
+
 	}
 	return nil
 }
 
 func (t *Thermometer) generateMessage() error {
+
 	deviceReading := &message.DeviceReading{
 		SensorType:    "temperature",
 		Timestamp:     time.Now().Unix(),
@@ -83,21 +102,24 @@ func (t *Thermometer) sendOnlineMessage() error {
 	return nil
 }
 
-func encode(data ...interface{}) []byte {
-	var encoded bytes.Buffer
-
-	for _, v := range data {
-		binary.Write(&encoded, binary.BigEndian, v)
+func (t *Thermometer) sendOfflineMessage() error {
+	deviceStatus := &message.DeviceStatus{
+		DeviceStatus: false,
+		SerialNumber: t.opts.SerialNumber,
 	}
+	data, err := proto.Marshal(deviceStatus)
+	if err != nil {
+		return err
+	}
+	t.opts.Broker.Publish(constants.DeviceStatus, data)
 
-	return encoded.Bytes()
+	return nil
 }
 
 func (t *Thermometer) Stop() error {
-	if t.isRunning {
-		t.stop <- struct{}{}
-	}
-	close(t.stop)
+	t.sendOfflineMessage()
+	os.Exit(0)
+
 	return nil
 }
 
