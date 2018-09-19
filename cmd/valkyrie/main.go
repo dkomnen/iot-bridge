@@ -9,6 +9,16 @@ import (
 
 var (
 	app = cli.NewApp()
+	lowerLimitFlag = cli.Float64Flag{
+		Name:  "lower-limit",
+		Usage: "lower limit for sensor data that is sent",
+		Value: 0.0,
+	}
+	upperLimitFlag = cli.Float64Flag{
+		Name:  "upper-limit",
+		Usage: "upper limit for sensor data that is sent",
+		Value: 100.0,
+	}
 )
 
 func init() {

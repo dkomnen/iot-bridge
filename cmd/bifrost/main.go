@@ -80,7 +80,7 @@ func main() {
 				deviceReading := &message.DeviceReading{}
 				err := proto.Unmarshal(msg, deviceReading)
 				log.Printf("Device reading: %v\n", deviceReading)
-				//saveReadingToMongo(mongoSession, deviceReading)
+				saveReadingToMongo(mongoSession, deviceReading)
 				if err != nil {
 					return err
 				}
